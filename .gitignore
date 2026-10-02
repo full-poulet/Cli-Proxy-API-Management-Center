@@ -34,3 +34,6 @@ settings.local.json
 *.njsproj
 *.sln
 *.sw?
+
+# Routing page render-check output (dev/screenshot-routing.mjs)
+dev/screenshots

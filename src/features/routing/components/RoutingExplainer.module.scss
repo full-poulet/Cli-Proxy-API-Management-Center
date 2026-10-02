@@ -1,0 +1,22 @@
+.root {
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--bg-primary) 82%, transparent);
+}
+
+.list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+
+  &::marker {
+    color: var(--text-quaternary);
+  }
+}

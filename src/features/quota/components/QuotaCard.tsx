@@ -23,6 +23,7 @@ import { bindQuotaClasses } from '../types';
 import { QUOTA_ADAPTERS, type QuotaCardState } from '../providers';
 import { isQuotaRefreshDisabled, type QuotaFileEntry } from '../logic';
 import { useClaudeResetGrants } from '../providers/claude/ClaudeResetGrants';
+import type { RoutingRankChip } from '@/features/routing/logic';
 import bodyStyles from './QuotaBody.module.scss';
 import styles from './QuotaCard.module.scss';
 
@@ -37,6 +38,8 @@ export type QuotaCardProps = {
   resetting: boolean;
   /** 首屏级联入场延迟；null = 不入场（切 tab / 翻页 / 刷新新挂载的卡片）。 */
   entranceDelayMs?: number | null;
+  /** Rank from the Fleet router (`#1 next`, `#2`); absent when the router has no row for this file. */
+  routingRank?: RoutingRankChip | null;
   onRefresh: () => void;
   onReset: () => void;
 };
@@ -49,6 +52,7 @@ export function QuotaCard(props: QuotaCardProps) {
     canRefresh,
     resetting,
     entranceDelayMs,
+    routingRank,
     onRefresh,
     onReset,
   } = props;
@@ -110,6 +114,16 @@ export function QuotaCard(props: QuotaCardProps) {
         <span className={styles.fileName} title={displayName}>
           {displayName}
         </span>
+        {routingRank && (
+          <span
+            className={`${styles.rankChip} ${routingRank.state === 'active' ? styles.rankChipNext : ''}`}
+            title={t('routing.chip_hint')}
+          >
+            {routingRank.state === 'active'
+              ? t('routing.chip_next', { rank: routingRank.rank })
+              : t('routing.chip_rank', { rank: routingRank.rank })}
+          </span>
+        )}
       </header>
 
       <div className={styles.body}>
