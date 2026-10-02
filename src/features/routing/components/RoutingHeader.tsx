@@ -84,9 +84,15 @@ export function RoutingHeader(props: RoutingHeaderProps) {
             </>
           )}
         </p>
-        {proxy && !proxy.reachable && (
+        {/* The router reports PATCH / read-back failures in `error` while the proxy itself
+            stays reachable, so the error must show on its own, not only when unreachable. */}
+        {proxy && (!proxy.reachable || proxy.error) && (
           <p className={styles.proxyError} role="alert">
-            {t('routing.proxy_unreachable', { error: proxy.error ?? t('common.unknown_error') })}
+            {proxy.reachable
+              ? t('routing.proxy_update_failed', { error: proxy.error })
+              : t('routing.proxy_unreachable', {
+                  error: proxy.error ?? t('common.unknown_error'),
+                })}
           </p>
         )}
       </div>

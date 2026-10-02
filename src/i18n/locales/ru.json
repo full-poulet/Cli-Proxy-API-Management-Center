@@ -1588,7 +1588,24 @@
     "weekday_wed": "Ср",
     "weekday_thu": "Чт",
     "weekday_fri": "Пт",
-    "weekday_sat": "Сб"
+    "weekday_sat": "Сб",
+    "layout_label": "Вид",
+    "layout_ledger": "Реестр",
+    "layout_cards": "Карточки",
+    "show_emails": "Показать адреса",
+    "hide_emails": "Скрыть адреса",
+    "show_emails_hint": "Адреса в именах файлов скрыты для демонстрации экрана; нажмите, чтобы показать"
+  },
+  "quota_ledger": {
+    "credentials": "Учётных данных: {{count}}",
+    "of_capacity": "из {{capacity}}%",
+    "no_reset_pending": "Сброс не ожидается",
+    "not_loaded": "Ещё не загружено",
+    "show_column": "Показать",
+    "hide_column": "Скрыть",
+    "renews": "продление {{time}}",
+    "credits_available": "доступно",
+    "claude_resets": "Накопленных сбросов: {{count}}"
   },
   "routing": {
     "title": "Маршрутизация",
@@ -1628,7 +1645,10 @@
     "events_empty": "Изменений пока не зафиксировано.",
     "chip_next": "#{{rank}} следующий",
     "chip_rank": "#{{rank}}",
-    "chip_hint": "Позиция в порядке маршрутизации (см. «Маршрутизация»)"
+    "chip_hint": "Позиция в порядке маршрутизации (см. «Маршрутизация»)",
+    "proxy_update_failed": "Не удалось применить приоритеты: {{error}}",
+    "estimated": "оценка",
+    "estimated_hint": "Прогноз: указанное время сброса уже прошло, маршрутизатор сдвинул его на одно окно вперёд"
   },
   "plugin_management": {
     "title": "Управление плагинами",

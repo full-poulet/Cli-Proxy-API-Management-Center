@@ -19,14 +19,16 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { useNow } from '@/hooks/useNow';
 import { useRevealGroup } from '@/hooks/motion';
-import { useAuthStore, useQuotaStore, useThemeStore } from '@/stores';
+import { useAuthStore, useQuotaStore, useQuotaViewStore, useThemeStore } from '@/stores';
 import type { AuthFileItem, ResolvedTheme } from '@/types';
-import { getQuotaCacheKey } from '@/utils/quota/identity';
+import { maskCredentialName } from '@/utils/quota';
+import { getQuotaCacheKey, getQuotaDisplayName } from '@/utils/quota/identity';
 import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
 import { useRoutingRanks } from '@/features/routing/hooks/useRoutingRanks';
 import { QuotaHeader } from './components/QuotaHeader';
 import { QuotaCard } from './components/QuotaCard';
 import { QuotaTimeline } from './components/QuotaTimeline';
+import { QuotaLedger } from './ledger/QuotaLedger';
 import {
   CARD_ENTRANCE_BUDGET_MS,
   QUOTA_PAGE_SIZE,
@@ -52,16 +54,11 @@ import { useDevinQuotaAutoLoad } from './providers/devin/useDevinQuotaAutoLoad';
 import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
 import { readQuotaUiState, writeQuotaUiState } from './uiState';
+import { QUOTA_LAYOUTS, type QuotaLayout } from '@/stores/useQuotaViewStore';
 import styles from './QuotaPage.module.scss';
 
 const TAB_IDS: string[] = ['all', ...QUOTA_TAB_ORDER];
 const SKELETON_CARD_COUNT = 6;
-
-/**
- * Existing providers display filenames; Devin's card and timeline share an
- * identity-aware display label. Keep the filename fallback stable for memoization.
- */
-const displayNameFor = (name: string) => name;
 
 export function QuotaPage() {
   const { t } = useTranslation();
@@ -84,6 +81,25 @@ export function QuotaPage() {
   const disableControls = connectionStatus !== 'connected';
   // Fleet router ranks (optional): a chip on each card the router knows about.
   const routingRanks = useRoutingRanks(!disableControls);
+
+  /* ---------- 视图偏好（localStorage）---------- */
+
+  const layout = useQuotaViewStore((state) => state.layout);
+  const setLayout = useQuotaViewStore((state) => state.setLayout);
+  const showEmails = useQuotaViewStore((state) => state.showEmails);
+  const toggleShowEmails = useQuotaViewStore((state) => state.toggleShowEmails);
+  // Masking applies to the display label only; cache keys and actions keep the real name.
+  const displayNameFor = useCallback(
+    (file: AuthFileItem) => {
+      const name = getQuotaDisplayName(file);
+      return showEmails ? name : maskCredentialName(name, file.email);
+    },
+    [showEmails]
+  );
+  const layoutOptions = useMemo(
+    () => QUOTA_LAYOUTS.map((id) => ({ value: id, label: t(`quota_management.layout_${id}`) })),
+    [t]
+  );
 
   /* ---------- 文件列表 ---------- */
 
@@ -323,6 +339,8 @@ export function QuotaPage() {
         attentionCount={attentionCount}
         refreshing={loading || batchLoading}
         disableControls={disableControls}
+        showEmails={showEmails}
+        onToggleEmails={toggleShowEmails}
         onRefreshAll={handleRefreshAll}
       />
 
@@ -365,14 +383,25 @@ export function QuotaPage() {
               </button>
             )}
           </div>
-          <div className={styles.sort}>
-            <Select
-              value={sortMode}
-              options={sortOptions}
-              onChange={handleSortModeChange}
-              ariaLabel={t('quota_management.sort_label')}
-              size="sm"
-            />
+          <div className={styles.toolbarRight}>
+            <div className={styles.sort}>
+              <Select
+                value={sortMode}
+                options={sortOptions}
+                onChange={handleSortModeChange}
+                ariaLabel={t('quota_management.sort_label')}
+                size="sm"
+              />
+            </div>
+            <div className={styles.sort}>
+              <Select
+                value={layout}
+                options={layoutOptions}
+                onChange={(next) => setLayout(next as QuotaLayout)}
+                ariaLabel={t('quota_management.layout_label')}
+                size="sm"
+              />
+            </div>
           </div>
         </div>
 
@@ -416,12 +445,26 @@ export function QuotaPage() {
               )
             }
           />
+        ) : layout === 'ledger' ? (
+          <QuotaLedger
+            pageEntries={pageItems}
+            allEntries={sortedEntries}
+            getQuota={getQuota}
+            displayNameFor={displayNameFor}
+            resolvedTheme={resolvedTheme}
+            canUseActions={canUseActions}
+            resettingQuotaName={resettingQuotaName}
+            routingRanks={routingRanks}
+            onRefresh={(file, adapter) => void refreshQuota(file, adapter)}
+            onReset={(file, adapter) => resetQuota(file, adapter)}
+          />
         ) : (
           <div className={styles.grid}>
             {pageItems.map((entry, index) => (
               <QuotaCard
                 key={`${entry.type}:${getQuotaCacheKey(entry.file)}`}
                 entry={entry}
+                displayName={displayNameFor(entry.file)}
                 quota={getQuota(entry)}
                 resolvedTheme={resolvedTheme}
                 canRefresh={canUseActions && !entry.file.disabled}

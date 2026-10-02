@@ -116,10 +116,46 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .secondaryAction:hover {
+    border-color: var(--border-hover);
+    background: color-mix(in srgb, var(--bg-tertiary) 55%, transparent);
+    color: var(--text-primary);
+  }
+
   .primaryAction:hover:not(:disabled) {
     transform: translateY(-1px);
     background: color-mix(in srgb, var(--text-primary) 86%, var(--bg-secondary));
     box-shadow: 0 12px 26px color-mix(in srgb, var(--text-primary) 22%, transparent);
+  }
+}
+
+/* Quiet outlined pill beside the primary one ("Show emails") */
+.secondaryAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: $radius-full;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  transition:
+    border-color var(--dur-hover, 200ms) var(--ease-out-strong, ease-out),
+    background-color var(--dur-hover, 200ms) var(--ease-out-strong, ease-out),
+    color var(--dur-hover, 200ms) var(--ease-out-strong, ease-out);
+
+  &[aria-pressed='true'] {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
 }
 
@@ -145,7 +181,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .primaryAction {
+  .primaryAction,
+  .secondaryAction {
     transition: none;
   }
 

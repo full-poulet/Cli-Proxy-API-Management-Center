@@ -138,6 +138,17 @@
   color: var(--text-primary);
 }
 
+/* Projected reset (router rolled a passed instant forward): quiet inline marker
+   with a dotted underline hinting at the tooltip. */
+.estimated {
+  margin-left: 5px;
+  font-style: italic;
+  color: var(--text-quaternary);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: help;
+}
+
 /* ---------- reason / error ---------- */
 
 .reason {

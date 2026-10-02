@@ -1609,7 +1609,24 @@
     "weekday_wed": "三",
     "weekday_thu": "四",
     "weekday_fri": "五",
-    "weekday_sat": "六"
+    "weekday_sat": "六",
+    "layout_label": "版面",
+    "layout_ledger": "帳本",
+    "layout_cards": "卡片",
+    "show_emails": "顯示信箱",
+    "hide_emails": "隱藏信箱",
+    "show_emails_hint": "檔名中的信箱預設遮罩（便於分享畫面），點擊切換顯示"
+  },
+  "quota_ledger": {
+    "credentials": "{{count}} 個憑證",
+    "of_capacity": "/ {{capacity}}%",
+    "no_reset_pending": "無待重設",
+    "not_loaded": "尚未載入",
+    "show_column": "顯示",
+    "hide_column": "隱藏",
+    "renews": "續期 {{time}}",
+    "credits_available": "次可用",
+    "claude_resets": "{{count}} 次儲備重設"
   },
   "routing": {
     "title": "路由",
@@ -1649,7 +1666,10 @@
     "events_empty": "尚未記錄任何變更。",
     "chip_next": "#{{rank}} 下一個",
     "chip_rank": "#{{rank}}",
-    "chip_hint": "在路由順序中的位置（見「路由」頁）"
+    "chip_hint": "在路由順序中的位置（見「路由」頁）",
+    "proxy_update_failed": "優先順序未能套用：{{error}}",
+    "estimated": "估計",
+    "estimated_hint": "推算值：回報的重設時間已過，路由器按一個週期向後推算"
   },
   "plugin_management": {
     "title": "插件管理",

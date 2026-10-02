@@ -8,6 +8,11 @@ Serves the built panel (dist/) as static files and answers:
                                (requires header X-Fleet-Usage: refresh, like the real router)
   GET  /v8/management/config   `{}` so the panel's login succeeds with any key
   GET  /v8/management/credentials  the same logins, so the Quota page shows rank chips
+  POST /v8/management/requests/api-call  the upstream calls the Quota page makes, answered
+                               by URL: Claude usage (5-hour / 7-day / 7-day Opus windows plus a
+                               weekly_scoped Fable 5 limit) + profile + reset-grant status, Codex
+                               wham/usage (with rate_limit_reset_credits) + subscriptions +
+                               reset-credits list. Numbers differ per auth_index.
 Everything else under /v8/management answers 404.
 
 Usage:  python3 dev/fake-usage-api.py [port]   (default 8899)
@@ -87,8 +92,11 @@ def payload(now: int, throttled: bool = False) -> dict:
                         "windows": [
                             {"id": "seven_day", "label": "7-day limit", "weekly": True,
                              "remaining_pct": 41.0, "resets_at": now + hours(74)},
+                            # Stale reading whose 5-hour reset had passed: the router rolled
+                            # it forward one period and flags the projection.
                             {"id": "five_hour", "label": "5-hour limit", "weekly": False,
-                             "remaining_pct": 22.0, "resets_at": now + hours(1.1)},
+                             "remaining_pct": 100.0, "resets_at": now + hours(3.9),
+                             "estimated": True},
                         ],
                         "source": "cache",
                         "reported_at": now - 3600 * 2,
@@ -164,7 +172,7 @@ def auth_files(now: int) -> dict:
     files = []
     for provider in payload(now)["providers"]:
         for account in provider["accounts"]:
-            files.append({
+            item = {
                 "name": account["name"],
                 "type": provider["id"],
                 "provider": provider["id"],
@@ -175,8 +183,136 @@ def auth_files(now: int) -> dict:
                 "priority": account["priority"],
                 "size": 1024,
                 "modified": now - 3600,
-            })
+            }
+            if provider["id"] == "codex":
+                # The Quota page reads the ChatGPT account id for the subscriptions call.
+                item["chatgpt_account_id"] = f"acct-{account['auth_index']}"
+                item["plan_type"] = account["plan"]
+            files.append(item)
     return {"files": files}
+
+
+def iso(ts: float) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%S+00:00", time.gmtime(ts))
+
+
+# Per-login numbers so the four rows look different (used %, hours until reset).
+CLAUDE_USAGE = {
+    "a1": {"five_hour": (0, None), "seven_day": (21, 28), "seven_day_opus": (0, 28), "fable": (42, 28)},
+    "a2": {"five_hour": (78, 1.1), "seven_day": (59, 74), "seven_day_opus": (12, 74), "fable": (100, 74)},
+}
+CODEX_USAGE = {
+    "c1": {"five_hour": (9, 4.6), "weekly": (43, 50), "plan": "pro", "credits": 2},
+    "c2": {"five_hour": (100, 2.4), "weekly": (100, 54), "plan": "plus", "credits": 0},
+}
+
+
+def claude_usage(auth_index: str, now: int) -> dict:
+    usage = CLAUDE_USAGE.get(auth_index, CLAUDE_USAGE["a1"])
+
+    def window(key: str) -> dict:
+        used, hours_left = usage[key]
+        return {"utilization": used, "resets_at": iso(now + hours(hours_left)) if hours_left else None}
+
+    fable_used, fable_hours = usage["fable"]
+    return {
+        "five_hour": window("five_hour"),
+        "seven_day": window("seven_day"),
+        "seven_day_opus": window("seven_day_opus"),
+        "limits": [
+            {
+                "kind": "weekly_scoped",
+                "group": "weekly",
+                "percent": fable_used,
+                "resets_at": iso(now + hours(fable_hours)),
+                "is_active": True,
+                "scope": {"model": {"id": "claude-fable-5-1", "display_name": "Fable 5"}},
+            }
+        ],
+        "extra_usage": {"is_enabled": False, "monthly_limit": 0, "used_credits": 0, "utilization": None},
+    }
+
+
+def claude_reset_grants(now: int) -> dict:
+    """Banked reset grants (cedar_ember) so the Claude rows show a resets-remaining count."""
+    return {
+        "cedar_ember": {
+            "eligible": True,
+            "at_limit": False,
+            "grants": [
+                {
+                    "id": "grant-1",
+                    "label": "Weekly reset",
+                    "resets_total": 2,
+                    "resets_left": 1,
+                    "starts_at": iso(now - 3600 * 24 * 3),
+                    "ends_at": iso(now + 3600 * 24 * 11),
+                    "clears": ["five_hour", "seven_day"],
+                    "paused": False,
+                    "usable_now": True,
+                    "use_requires_limit": True,
+                }
+            ],
+            "next_grant_id": "grant-1",
+        }
+    }
+
+
+def codex_usage(auth_index: str, now: int) -> dict:
+    usage = CODEX_USAGE.get(auth_index, CODEX_USAGE["c1"])
+    five_used, five_hours = usage["five_hour"]
+    week_used, week_hours = usage["weekly"]
+    return {
+        "plan_type": usage["plan"],
+        "credits": {"has_credits": True, "unlimited": False, "balance": "61216.75"},
+        "rate_limit": {
+            "allowed": week_used < 100,
+            "limit_reached": week_used >= 100,
+            "primary_window": {"used_percent": five_used, "limit_window_seconds": 18000,
+                               "reset_at": now + hours(five_hours)},
+            "secondary_window": {"used_percent": week_used, "limit_window_seconds": 604800,
+                                 "reset_at": now + hours(week_hours)},
+        },
+        "rate_limit_reset_credits": {"available_count": usage["credits"],
+                                     "applicable_available_count": usage["credits"]},
+    }
+
+
+def codex_reset_credits(auth_index: str, now: int) -> dict:
+    count = CODEX_USAGE.get(auth_index, CODEX_USAGE["c1"])["credits"]
+    return {
+        "available_count": count,
+        "credits": [
+            {"id": f"credit-{auth_index}-{i + 1}", "reset_type": "codex_rate_limits", "status": "available",
+             "granted_at": iso(now - 3600 * 24 * 5), "expires_at": iso(now + hours(22 * 24 + i * 7 * 24))}
+            for i in range(count)
+        ],
+    }
+
+
+def api_call(request: dict, now: int) -> dict:
+    """Answer one proxied upstream call the way the real /requests/api-call does."""
+    url = str(request.get("url", ""))
+    auth_index = str(request.get("authIndex") or request.get("auth_index") or "")
+    body = None
+    if "api.anthropic.com/api/oauth/usage" in url:
+        body = claude_reset_grants(now) if "cedar_ember" in url else claude_usage(auth_index, now)
+    elif "api.anthropic.com/api/oauth/profile" in url:
+        body = {"account": {"email": f"{auth_index}@example.ch", "has_claude_max": True,
+                            "has_claude_pro": False},
+                "organization": {"uuid": "11111111-2222-4333-8444-555555555555",
+                                 "organization_type": "claude_max"}}
+    elif "wham/rate-limit-reset-credits/consume" in url:
+        body = {"ok": True}
+    elif "wham/rate-limit-reset-credits" in url:
+        body = codex_reset_credits(auth_index, now)
+    elif "wham/usage" in url:
+        body = codex_usage(auth_index, now)
+    elif "backend-api/subscriptions" in url:
+        body = {"active_until": iso(now + hours(21 * 24 + 5))}
+    if body is None:
+        return {"status_code": 404, "header": {}, "body": {"error": f"not stubbed: {url}"}}
+    return {"status_code": 200, "header": {"Content-Type": ["application/json"]}, "body": body}
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -208,6 +344,13 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         path = self.path.split("?", 1)[0]
+        if path == "/v8/management/requests/api-call":
+            length = int(self.headers.get("Content-Length") or 0)
+            try:
+                request = json.loads(self.rfile.read(length) or b"{}")
+            except json.JSONDecodeError:
+                request = {}
+            return self._json(200, api_call(request, int(time.time())))
         if path in ("/usage-api/refresh", "/refresh"):
             if self.headers.get("X-Fleet-Usage") != "refresh":
                 return self._json(403, {"error": "missing X-Fleet-Usage header"})

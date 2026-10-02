@@ -4,14 +4,17 @@
 
 import { useTranslation } from 'react-i18next';
 import { useNow } from '@/hooks/useNow';
+import { useQuotaViewStore } from '@/stores';
 import type { RoutingEvent } from '@/types';
-import { formatRelativeInstant } from '@/utils/quota';
+import { formatRelativeInstant, maskEmail } from '@/utils/quota';
 import { formatResetClock } from '../logic';
 import styles from './RoutingEvents.module.scss';
 
 export function RoutingEvents({ events }: { events: RoutingEvent[] }) {
   const { t, i18n } = useTranslation();
   const now = useNow();
+  // Event text names logins by address; honour the same "Show emails" toggle as the rows.
+  const showEmails = useQuotaViewStore((state) => state.showEmails);
 
   return (
     <section className={styles.section} aria-label={t('routing.events_title')}>
@@ -28,7 +31,7 @@ export function RoutingEvents({ events }: { events: RoutingEvent[] }) {
               >
                 {formatRelativeInstant(event.atMs, now, i18n.resolvedLanguage)}
               </span>
-              <span className={styles.text}>{event.text}</span>
+              <span className={styles.text}>{showEmails ? event.text : maskEmail(event.text)}</span>
             </li>
           ))}
         </ol>

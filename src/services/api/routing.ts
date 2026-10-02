@@ -58,6 +58,7 @@ const normalizeWindow = (raw: unknown): RoutingWindow | null => {
     weekly: asBoolean(raw.weekly),
     remainingPct: asNumber(raw.remaining_pct),
     resetsAtMs: secondsToMs(raw.resets_at),
+    estimated: asBoolean(raw.estimated),
   };
 };
 

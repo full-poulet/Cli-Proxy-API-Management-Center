@@ -1585,7 +1585,24 @@
     "weekday_wed": "Wed",
     "weekday_thu": "Thu",
     "weekday_fri": "Fri",
-    "weekday_sat": "Sat"
+    "weekday_sat": "Sat",
+    "layout_label": "Layout",
+    "layout_ledger": "Ledger",
+    "layout_cards": "Cards",
+    "show_emails": "Show emails",
+    "hide_emails": "Hide emails",
+    "show_emails_hint": "Addresses in file names are masked for screen sharing; toggle to show them"
+  },
+  "quota_ledger": {
+    "credentials": "{{count}} credentials",
+    "of_capacity": "of {{capacity}}%",
+    "no_reset_pending": "No reset pending",
+    "not_loaded": "Not loaded yet",
+    "show_column": "Show",
+    "hide_column": "Hide",
+    "renews": "renews {{time}}",
+    "credits_available": "available",
+    "claude_resets": "{{count}} banked resets"
   },
   "routing": {
     "title": "Routing",
@@ -1625,7 +1642,10 @@
     "events_empty": "No changes recorded yet.",
     "chip_next": "#{{rank}} next",
     "chip_rank": "#{{rank}}",
-    "chip_hint": "Position in the routing order (see Routing)"
+    "chip_hint": "Position in the routing order (see Routing)",
+    "proxy_update_failed": "Priorities could not be applied: {{error}}",
+    "estimated": "est.",
+    "estimated_hint": "Projected: the reported reset had already passed, so the router rolled it forward by one window"
   },
   "plugin_management": {
     "title": "Plugin Management",

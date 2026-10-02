@@ -10,7 +10,9 @@ import { useTranslation } from 'react-i18next';
 import { QuotaMeter } from '@/features/quota/components/QuotaMeter';
 import type { QuotaClassMap } from '@/features/quota/types';
 import { useNow } from '@/hooks/useNow';
+import { useQuotaViewStore } from '@/stores';
 import type { RoutingAccount } from '@/types';
+import { maskEmail } from '@/utils/quota';
 import { accountDisplayName, formatCountdown, formatResetClock, resolveRankBadge } from '../logic';
 import styles from './RoutingAccountRow.module.scss';
 
@@ -29,8 +31,10 @@ const TONE_CLASS = {
 export function RoutingAccountRow({ account, quotaClasses }: RoutingAccountRowProps) {
   const { t, i18n } = useTranslation();
   const now = useNow();
+  const showEmails = useQuotaViewStore((state) => state.showEmails);
   const badge = resolveRankBadge(account.state, account.rank);
-  const displayName = accountDisplayName(account);
+  const rawName = accountDisplayName(account);
+  const displayName = showEmails ? rawName : maskEmail(rawName);
   const dimmed = account.state === 'exhausted' || account.state === 'disabled';
 
   return (
@@ -39,7 +43,7 @@ export function RoutingAccountRow({ account, quotaClasses }: RoutingAccountRowPr
         <span className={`${styles.badge} ${TONE_CLASS[badge.tone]}`}>
           {t(`routing.badge_${badge.key}`, { rank: badge.rank ?? '' }).trim()}
         </span>
-        <span className={styles.identity} title={account.name}>
+        <span className={styles.identity} title={showEmails ? account.name : undefined}>
           {displayName}
         </span>
         {account.plan && <span className={styles.plan}>{account.plan}</span>}
@@ -79,6 +83,11 @@ export function RoutingAccountRow({ account, quotaClasses }: RoutingAccountRowPr
                           {' · '}
                           {formatResetClock(window.resetsAtMs, now, i18n.resolvedLanguage)}
                         </span>
+                        {window.estimated && (
+                          <span className={styles.estimated} title={t('routing.estimated_hint')}>
+                            {t('routing.estimated')}
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
@@ -90,7 +99,9 @@ export function RoutingAccountRow({ account, quotaClasses }: RoutingAccountRowPr
         </div>
       )}
 
-      {account.reason && <p className={styles.reason}>{account.reason}</p>}
+      {account.reason && (
+        <p className={styles.reason}>{showEmails ? account.reason : maskEmail(account.reason)}</p>
+      )}
       {account.error && (
         <p className={styles.error} role="alert">
           {account.error}

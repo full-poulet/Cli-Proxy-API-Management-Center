@@ -16,9 +16,9 @@ import { useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatRelativeInstant, TYPE_COLORS } from '@/utils/quota';
-import { getQuotaCacheKey, getQuotaDisplayName } from '@/utils/quota/identity';
+import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { useNow } from '@/hooks/useNow';
-import type { ResolvedTheme, ThemeColors } from '@/types';
+import type { AuthFileItem, ResolvedTheme, ThemeColors } from '@/types';
 import {
   buildTimelineLane,
   laneHasWindow,
@@ -52,7 +52,8 @@ export interface QuotaTimelineProps {
    * off the entry, and lanes see exactly what the cards see.
    */
   quotaFor: (entry: QuotaFileEntry) => QuotaCardState | undefined;
-  displayNameFor: (name: string) => string;
+  /** Lane label; the page decides whether the address inside is masked. */
+  displayNameFor: (file: AuthFileItem) => string;
   resolvedTheme: ResolvedTheme;
   /** Injectable for tests/screenshots; defaults to the real clock. */
   now?: number;
@@ -93,10 +94,7 @@ export function QuotaTimeline({
     () =>
       entries.map((entry) => ({
         name: getQuotaCacheKey(entry.file),
-        displayName:
-          entry.type === 'devin'
-            ? getQuotaDisplayName(entry.file)
-            : displayNameFor(entry.file.name),
+        displayName: displayNameFor(entry.file),
         provider: entry.type,
         quota: quotaFor(entry),
       })),
@@ -357,8 +355,7 @@ function Lane({ lane, span, now, mode, cells, nowPercent, resolvedTheme }: LaneP
         <div className={styles.laneLimits}>
           {lane.limits.map((limit) => (
             <span key={limit.label} className={styles.laneLimit}>
-              {lane.provider === 'meta' ? t(limit.label) : limit.label}{' '}
-              <b>{limit.remaining}%</b>
+              {lane.provider === 'meta' ? t(limit.label) : limit.label} <b>{limit.remaining}%</b>
             </span>
           ))}
         </div>

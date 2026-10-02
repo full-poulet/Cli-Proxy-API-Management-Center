@@ -76,6 +76,32 @@ describe('normalizeRoutingPayload', () => {
     expect(payload.events.map((event) => event.text)).toEqual(['newer', 'older']);
   });
 
+  test('carries the estimated flag and defaults it to false', () => {
+    const payload = normalizeRoutingPayload({
+      providers: [
+        {
+          id: 'claude',
+          accounts: [
+            {
+              name: 'a.json',
+              windows: [
+                { id: 'seven_day', resets_at: 1, estimated: true },
+                { id: 'five_hour', resets_at: 2 },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    expect(payload.providers[0].accounts[0].windows.map((w) => w.estimated)).toEqual([true, false]);
+  });
+
+  test('keeps a proxy error even when the proxy is reachable (failed priority update)', () => {
+    expect(
+      normalizeRoutingPayload({ proxy: { reachable: true, error: 'PATCH 500' } }).proxy
+    ).toMatchObject({ reachable: true, error: 'PATCH 500' });
+  });
+
   test('defaults reachable to true only when the proxy block is absent', () => {
     expect(normalizeRoutingPayload({}).proxy.reachable).toBe(true);
     expect(

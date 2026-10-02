@@ -4,6 +4,10 @@
  * Stale-request guard: every request takes an id; the id is bumped on unmount,
  * on connection change and before each new request, so a slow old response
  * never overwrites a newer one (same pattern as the Quota page file list).
+ *
+ * The `refreshing` flag is tracked by a separate token: the 60 s poll bumps the
+ * shared request id, and if that happened while a manual refresh was in flight
+ * the refresh would otherwise never clear its own spinner.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -33,13 +37,15 @@ export function useRoutingPayload(enabled: boolean): RoutingPayloadState {
   const [error, setError] = useState<string | null>(null);
   const [throttled, setThrottled] = useState(false);
   const requestRef = useRef(0);
+  const refreshRef = useRef(0);
 
   const run = useCallback(
     async (mode: 'poll' | 'refresh') => {
       if (!enabled || !apiBase) return;
       const requestId = ++requestRef.current;
       const isCurrent = () => requestId === requestRef.current;
-      if (mode === 'refresh') setRefreshing(true);
+      const refreshToken = mode === 'refresh' ? ++refreshRef.current : null;
+      if (refreshToken !== null) setRefreshing(true);
       try {
         const next =
           mode === 'refresh'
@@ -54,10 +60,9 @@ export function useRoutingPayload(enabled: boolean): RoutingPayloadState {
         if (!isCurrent()) return;
         setError(err instanceof Error ? err.message : String(err));
       } finally {
-        if (isCurrent()) {
-          setLoading(false);
-          if (mode === 'refresh') setRefreshing(false);
-        }
+        if (isCurrent()) setLoading(false);
+        // Cleared by the latest refresh only, regardless of what the poll did meanwhile.
+        if (refreshToken !== null && refreshToken === refreshRef.current) setRefreshing(false);
       }
     },
     [apiBase, enabled]

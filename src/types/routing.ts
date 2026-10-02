@@ -16,6 +16,12 @@ export interface RoutingWindow {
   remainingPct: number | null;
   /** Instant the window resets, in ms; null when the reader had no reset time. */
   resetsAtMs: number | null;
+  /**
+   * True when the router rolled a passed reset forward by the window's period
+   * (the reading was stale, so the window is shown full and the next reset is
+   * a projection rather than a reported instant).
+   */
+  estimated: boolean;
 }
 
 export interface RoutingAccount {
