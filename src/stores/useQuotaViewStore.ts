@@ -28,7 +28,7 @@ export const useQuotaViewStore = create<QuotaViewState>()(
   persist(
     (set) => ({
       layout: 'ledger',
-      showEmails: false,
+      showEmails: true, // Fleet default: tailnet-only panel, and our two logins mask to the same string
       showGeneralWeekly: false,
       setLayout: (layout) => set({ layout }),
       toggleShowEmails: () => set((state) => ({ showEmails: !state.showEmails })),
