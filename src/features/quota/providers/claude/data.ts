@@ -12,7 +12,8 @@ import type {
   ClaudeQuotaWindow,
   ClaudeUsagePayload,
 } from '@/types';
-import { apiCallApi, getApiCallErrorMessage } from '@/services/api';
+import { apiCallApi, authFilesApi, getApiCallErrorMessage } from '@/services/api';
+import { claudeUsageFromHeaders } from './headerQuota';
 import {
   CLAUDE_PROFILE_URL,
   CLAUDE_USAGE_URL,
@@ -183,6 +184,22 @@ const fetchClaudeQuota = async (file: AuthFileItem, t: TFunction): Promise<Claud
   const result = usageResult.value;
 
   if (result.statusCode < 200 || result.statusCode >= 300) {
+    // Setup tokens cannot read usage; Anthropic also throttles full OAuth logins.
+    // The credential list carries limits observed on actual inference responses.
+    if (result.statusCode === 403 || result.statusCode === 429) {
+      try {
+        const { files } = await authFilesApi.list({ name: file.name, authIndex });
+        const current = files.find(
+          (item) =>
+            item.name === file.name &&
+            normalizeAuthIndex(item['auth_index'] ?? item.authIndex) === authIndex
+        );
+        const observed = claudeUsageFromHeaders(current?.model_quotas);
+        if (observed) return { windows: buildClaudeQuotaWindows(observed, t) };
+      } catch {
+        // Preserve the original usage error if no recent observation is available.
+      }
+    }
     throw createStatusError(getApiCallErrorMessage(result), result.statusCode);
   }
 
