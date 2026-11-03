@@ -480,6 +480,7 @@
     "idle": "Click here to refresh quota",
     "loading": "Loading quota...",
     "load_failed": "Failed to load quota: {{message}}",
+    "login_expired": "Login expired. Sign in again under OAuth Login.",
     "missing_auth_index": "Auth file missing auth_index",
     "empty_windows": "No quota data available",
     "refresh_button": "Refresh Quota",
