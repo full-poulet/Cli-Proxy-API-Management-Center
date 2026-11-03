@@ -161,6 +161,11 @@ const fetchClaudeQuota = async (file: AuthFileItem, t: TFunction): Promise<Claud
   if (!authIndex) {
     throw new Error(t('claude_quota.missing_auth_index'));
   }
+  // A login whose refresh token Anthropic rejected stays dead until someone signs in again;
+  // its usage call only answers 429, which hides the real problem.
+  if (file.status === 'error' && /invalid[ _]grant/i.test(file.statusMessage ?? '')) {
+    throw new Error(t('claude_quota.login_expired'));
+  }
 
   const [usageResult, profileResult] = await Promise.allSettled([
     apiCallApi.request({
@@ -182,6 +187,14 @@ const fetchClaudeQuota = async (file: AuthFileItem, t: TFunction): Promise<Claud
   }
 
   const result = usageResult.value;
+  const planType =
+    profileResult.status === 'fulfilled' &&
+    profileResult.value.statusCode >= 200 &&
+    profileResult.value.statusCode < 300
+      ? resolveClaudePlanType(
+          parseClaudeProfilePayload(profileResult.value.body ?? profileResult.value.bodyText)
+        )
+      : null;
 
   if (result.statusCode < 200 || result.statusCode >= 300) {
     // Setup tokens cannot read usage; Anthropic also throttles full OAuth logins.
@@ -195,9 +208,9 @@ const fetchClaudeQuota = async (file: AuthFileItem, t: TFunction): Promise<Claud
             normalizeAuthIndex(item['auth_index'] ?? item.authIndex) === authIndex
         );
         const observed = claudeUsageFromHeaders(current?.model_quotas);
-        if (observed) return { windows: buildClaudeQuotaWindows(observed, t) };
+        if (observed) return { windows: buildClaudeQuotaWindows(observed, t), planType };
       } catch {
-        // Preserve the original usage error if no recent observation is available.
+        // Preserve the original usage error if no unexpired observation is available.
       }
     }
     throw createStatusError(getApiCallErrorMessage(result), result.statusCode);
@@ -209,15 +222,6 @@ const fetchClaudeQuota = async (file: AuthFileItem, t: TFunction): Promise<Claud
   }
 
   const windows = buildClaudeQuotaWindows(payload, t);
-  const planType =
-    profileResult.status === 'fulfilled' &&
-    profileResult.value.statusCode >= 200 &&
-    profileResult.value.statusCode < 300
-      ? resolveClaudePlanType(
-          parseClaudeProfilePayload(profileResult.value.body ?? profileResult.value.bodyText)
-        )
-      : null;
-
   return { windows, extraUsage: payload.extra_usage, planType };
 };
 

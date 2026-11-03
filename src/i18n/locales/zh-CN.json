@@ -478,6 +478,7 @@
     "idle": "点击此处刷新额度",
     "loading": "正在加载额度...",
     "load_failed": "额度获取失败：{{message}}",
+    "login_expired": "登录已过期，请在 OAuth 登录中重新登录。",
     "missing_auth_index": "认证文件缺少 auth_index",
     "empty_windows": "暂无额度数据",
     "refresh_button": "刷新额度",
