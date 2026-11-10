@@ -126,6 +126,54 @@
   border: 1px solid var(--border-color);
 }
 
+/* ---------- reorder: two quiet icon buttons at the right edge (manual mode only) ---------- */
+
+.reorder {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.moveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: color-mix(in srgb, var(--bg-tertiary) 60%, transparent);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    color var(--dur-hover, 200ms) var(--ease-out-strong, ease-out),
+    border-color var(--dur-hover, 200ms) var(--ease-out-strong, ease-out),
+    transform var(--dur-press, 160ms) var(--ease-out-strong, ease-out);
+
+  &[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  &:active:not([aria-disabled='true']) {
+    transform: scale(0.94);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 1px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .moveButton:hover:not([aria-disabled='true']) {
+    color: var(--text-primary);
+    border-color: var(--border-hover);
+  }
+}
+
 /* ---------- meters: compact grid, the weekly window reads a notch stronger ---------- */
 
 .meters {
@@ -177,7 +225,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .row {
+  .row,
+  .moveButton {
     transition: none;
+  }
+
+  .moveButton:active:not([aria-disabled='true']) {
+    transform: none;
   }
 }

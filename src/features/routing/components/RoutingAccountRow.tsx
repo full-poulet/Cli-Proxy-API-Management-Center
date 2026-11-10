@@ -4,9 +4,14 @@
  *
  * Meters reuse the Quota page's QuotaMeter + QuotaBody coat so both pages
  * read identically (same track, same three-step fill colours).
+ *
+ * With `reorder` set (manual mode) the head also carries move up / down
+ * buttons. They use aria-disabled rather than disabled so the focused button
+ * keeps focus across the re-render that follows a save.
  */
 
 import { useTranslation } from 'react-i18next';
+import { IconChevronDown, IconChevronUp } from '@/components/ui/icons';
 import { QuotaMeter } from '@/features/quota/components/QuotaMeter';
 import type { QuotaClassMap } from '@/features/quota/types';
 import { useNow } from '@/hooks/useNow';
@@ -16,9 +21,19 @@ import { maskEmail } from '@/utils/quota';
 import { accountDisplayName, formatCountdown, formatResetClock, resolveRankBadge } from '../logic';
 import styles from './RoutingAccountRow.module.scss';
 
+export type RoutingReorderControls = {
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  /** True while a save is in flight or the connection is down: clicks are ignored. */
+  inert: boolean;
+  onMove: (direction: -1 | 1) => void;
+};
+
 export type RoutingAccountRowProps = {
   account: RoutingAccount;
   quotaClasses: QuotaClassMap;
+  /** Present only in "my order" mode. */
+  reorder?: RoutingReorderControls;
 };
 
 const TONE_CLASS = {
@@ -28,7 +43,7 @@ const TONE_CLASS = {
   muted: styles.badgeMuted,
 } as const;
 
-export function RoutingAccountRow({ account, quotaClasses }: RoutingAccountRowProps) {
+export function RoutingAccountRow({ account, quotaClasses, reorder }: RoutingAccountRowProps) {
   const { t, i18n } = useTranslation();
   const now = useNow();
   const showEmails = useQuotaViewStore((state) => state.showEmails);
@@ -55,6 +70,32 @@ export function RoutingAccountRow({ account, quotaClasses }: RoutingAccountRowPr
           )}
           {account.source && <span className={styles.tagSource}>{account.source}</span>}
         </span>
+        {reorder && (
+          <span className={styles.reorder}>
+            <button
+              type="button"
+              className={styles.moveButton}
+              aria-label={t('routing.move_up', { name: displayName })}
+              aria-disabled={reorder.inert || !reorder.canMoveUp || undefined}
+              onClick={() => {
+                if (!reorder.inert && reorder.canMoveUp) reorder.onMove(-1);
+              }}
+            >
+              <IconChevronUp size={14} />
+            </button>
+            <button
+              type="button"
+              className={styles.moveButton}
+              aria-label={t('routing.move_down', { name: displayName })}
+              aria-disabled={reorder.inert || !reorder.canMoveDown || undefined}
+              onClick={() => {
+                if (!reorder.inert && reorder.canMoveDown) reorder.onMove(1);
+              }}
+            >
+              <IconChevronDown size={14} />
+            </button>
+          </span>
+        )}
       </header>
 
       {account.windows.length > 0 && (
