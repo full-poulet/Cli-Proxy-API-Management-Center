@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Collapsible } from '@/components/ui/Collapsible';
 import styles from './RoutingExplainer.module.scss';
 
-const POINTS = ['priority', 'soonest_reset', 'affinity', 'exhausted'] as const;
+const POINTS = ['priority', 'modes', 'manual', 'affinity', 'exhausted'] as const;
 
 export function RoutingExplainer() {
   const { t } = useTranslation();

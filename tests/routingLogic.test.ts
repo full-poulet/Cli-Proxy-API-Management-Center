@@ -5,9 +5,11 @@
 import { describe, expect, test } from 'bun:test';
 import { normalizeRoutingPayload, resolveRoutingBase } from '@/services/api/routing';
 import {
+  buildEditableOrder,
   buildRankIndex,
   countAccounts,
   formatCountdown,
+  moveInOrder,
   resolveRankBadge,
 } from '@/features/routing/logic';
 import { DAY_MS, HOUR_MS, MINUTE_MS } from '@/utils/time/durations';
@@ -96,6 +98,21 @@ describe('normalizeRoutingPayload', () => {
     expect(payload.providers[0].accounts[0].windows.map((w) => w.estimated)).toEqual([true, false]);
   });
 
+  test('reads the ordering mode and manual order, defaulting to even / empty', () => {
+    const payload = normalizeRoutingPayload({
+      providers: [
+        { id: 'claude', mode: 'manual', order: ['b.json', 7, 'a.json'] },
+        { id: 'codex', mode: 'something-new', order: 'not-a-list' },
+        { id: 'gemini' },
+      ],
+    });
+    expect(payload.providers.map((p) => [p.mode, p.order])).toEqual([
+      ['manual', ['b.json', 'a.json']],
+      ['even', []],
+      ['even', []],
+    ]);
+  });
+
   test('keeps a proxy error even when the proxy is reachable (failed priority update)', () => {
     expect(
       normalizeRoutingPayload({ proxy: { reachable: true, error: 'PATCH 500' } }).proxy
@@ -153,5 +170,38 @@ describe('rank badges and chips', () => {
     expect(index.get('claude-a.json')).toEqual({ rank: 1, state: 'active' });
     expect(buildRankIndex(null).size).toBe(0);
     expect(countAccounts(payload)).toBe(4);
+  });
+});
+
+describe('manual order helpers', () => {
+  const accounts = normalizeRoutingPayload(RAW).providers[0].accounts; // a, b, c, d
+
+  test('buildEditableOrder puts the saved order first, then the rest in display order', () => {
+    const names = (saved: string[]) =>
+      buildEditableOrder(accounts, saved).map((account) => account.name);
+    expect(names(['claude-c.json', 'claude-a.json'])).toEqual([
+      'claude-c.json',
+      'claude-a.json',
+      'claude-b.json',
+      'claude-d.json',
+    ]);
+    // Unknown and duplicate names in the saved list are ignored.
+    expect(names(['gone.json', 'claude-b.json', 'claude-b.json'])).toEqual([
+      'claude-b.json',
+      'claude-a.json',
+      'claude-c.json',
+      'claude-d.json',
+    ]);
+    expect(names([])).toEqual(accounts.map((account) => account.name));
+  });
+
+  test('moveInOrder swaps neighbours and leaves edge moves untouched', () => {
+    const order = ['a', 'b', 'c'];
+    expect(moveInOrder(order, 'b', -1)).toEqual(['b', 'a', 'c']);
+    expect(moveInOrder(order, 'b', 1)).toEqual(['a', 'c', 'b']);
+    expect(moveInOrder(order, 'a', -1)).toBe(order);
+    expect(moveInOrder(order, 'c', 1)).toBe(order);
+    expect(moveInOrder(order, 'zzz', 1)).toBe(order);
+    expect(order).toEqual(['a', 'b', 'c']);
   });
 });

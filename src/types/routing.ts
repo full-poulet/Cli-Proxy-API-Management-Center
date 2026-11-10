@@ -1,8 +1,9 @@
 /**
  * Routing payload served by the Fleet router at `<apiBase>/usage-api/routing`.
  *
- * The router ranks the proxy's OAuth logins by soonest weekly reset and writes
- * the ranking back as credential priorities. This is the normalized, camelCase
+ * The router ranks the proxy's OAuth logins per provider (even drain, soonest
+ * reset or the user's own order) and writes the ranking back as credential
+ * priorities. This is the normalized, camelCase
  * shape the Routing page renders; `services/api/routing.ts` parses the raw JSON.
  */
 
@@ -43,9 +44,19 @@ export interface RoutingAccount {
   error: string | null;
 }
 
+/**
+ * How the router orders a provider's logins (saved in the router, per provider):
+ * `even` — most weekly quota left first; `reset` — soonest weekly reset first;
+ * `manual` — the user's own `order`, then everything else.
+ */
+export type RoutingMode = 'even' | 'reset' | 'manual';
+
 export interface RoutingProvider {
   id: string;
   label: string;
+  mode: RoutingMode;
+  /** Auth file names, most preferred first; kept even while mode is not `manual`. */
+  order: string[];
   accounts: RoutingAccount[];
 }
 

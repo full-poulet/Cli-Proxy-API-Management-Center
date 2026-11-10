@@ -12,6 +12,7 @@ import type {
   RoutingAccount,
   RoutingAccountState,
   RoutingEvent,
+  RoutingMode,
   RoutingPayload,
   RoutingProvider,
   RoutingProxySettings,
@@ -20,7 +21,9 @@ import type {
 import { normalizeApiBase } from '@/utils/connection';
 
 const USAGE_API_PREFIX = '/usage-api';
-const REFRESH_HEADER = 'X-Fleet-Usage';
+const FLEET_HEADER = 'X-Fleet-Usage';
+
+const ROUTING_MODES: readonly RoutingMode[] = ['even', 'reset', 'manual'];
 
 const ACCOUNT_STATES: readonly RoutingAccountState[] = [
   'active',
@@ -91,6 +94,13 @@ const normalizeAccount = (raw: unknown): RoutingAccount | null => {
   };
 };
 
+/** Older routers send no mode/order: that is the default "even drain" with no saved order. */
+const normalizeMode = (value: unknown): RoutingMode =>
+  ROUTING_MODES.find((mode) => mode === value) ?? 'even';
+
+const normalizeOrder = (value: unknown): string[] =>
+  Array.isArray(value) ? value.map(asString).filter((item): item is string => item !== null) : [];
+
 const normalizeProvider = (raw: unknown): RoutingProvider | null => {
   if (!isRecord(raw)) return null;
   const id = asString(raw.id);
@@ -98,6 +108,8 @@ const normalizeProvider = (raw: unknown): RoutingProvider | null => {
   return {
     id,
     label: asString(raw.label) ?? id,
+    mode: normalizeMode(raw.mode),
+    order: normalizeOrder(raw.order),
     accounts: Array.isArray(raw.accounts)
       ? raw.accounts.map(normalizeAccount).filter((item): item is RoutingAccount => item !== null)
       : [],
@@ -153,7 +165,7 @@ export function resolveRoutingBase(apiBase: string): string {
 
 async function requestRouting(
   apiBase: string,
-  path: '/routing' | '/refresh',
+  path: '/routing' | '/refresh' | '/preferences',
   init: RequestInit,
   signal?: AbortSignal
 ): Promise<RoutingPayload> {
@@ -182,7 +194,30 @@ export const routingApi = {
     requestRouting(
       apiBase,
       '/refresh',
-      { method: 'POST', headers: { [REFRESH_HEADER]: 'refresh' } },
+      { method: 'POST', headers: { [FLEET_HEADER]: 'refresh' } },
+      signal
+    ),
+
+  /**
+   * Save a provider's ordering mode and manual order; the reply is the full
+   * payload, already re-ranked (not subject to the refresh throttle). Send the
+   * current order along with `even` / `reset` so the manual list survives.
+   */
+  savePreference: (
+    apiBase: string,
+    provider: string,
+    mode: RoutingMode,
+    order: string[],
+    signal?: AbortSignal
+  ) =>
+    requestRouting(
+      apiBase,
+      '/preferences',
+      {
+        method: 'POST',
+        headers: { [FLEET_HEADER]: 'preferences', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, mode, order }),
+      },
       signal
     ),
 };

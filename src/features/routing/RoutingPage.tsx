@@ -3,7 +3,9 @@
  *
  * Data comes from the Fleet router (`<apiBase>/usage-api/routing`), polled
  * every 60 s while mounted (see useRoutingPayload). The header refresh slot is
- * registered too, so the global refresh button re-fetches the ranking.
+ * registered too, so the global refresh button re-fetches the ranking. Each
+ * provider section can change its ordering mode / manual order; that saves
+ * through the same hook so the reply replaces the payload safely.
  */
 
 import { useCallback } from 'react';
@@ -36,7 +38,17 @@ export function RoutingPage() {
   const revealRef = useRevealGroup<HTMLDivElement>();
   const connected = connectionStatus === 'connected';
 
-  const { payload, loading, refreshing, error, throttled, refresh } = useRoutingPayload(connected);
+  const {
+    payload,
+    loading,
+    refreshing,
+    error,
+    throttled,
+    refresh,
+    savingProvider,
+    saveError,
+    savePreference,
+  } = useRoutingPayload(connected);
 
   const handleRefresh = useCallback(() => {
     if (!connected) return;
@@ -81,6 +93,10 @@ export function RoutingPage() {
               provider={provider}
               resolvedTheme={resolvedTheme}
               quotaClasses={quotaClasses}
+              saving={savingProvider === provider.id}
+              saveError={saveError?.provider === provider.id ? saveError.message : null}
+              disableControls={!connected}
+              onSavePreference={(mode, order) => void savePreference(provider.id, mode, order)}
             />
           ))}
         </div>

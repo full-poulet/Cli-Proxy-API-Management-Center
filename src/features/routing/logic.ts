@@ -2,7 +2,7 @@
  * Pure helpers for the Routing page — clock-free so they are directly testable.
  */
 
-import type { RoutingAccount, RoutingAccountState, RoutingPayload } from '@/types';
+import type { RoutingAccount, RoutingAccountState, RoutingMode, RoutingPayload } from '@/types';
 import { DAY_MS, HOUR_MS, MINUTE_MS } from '@/utils/time/durations';
 
 /**
@@ -90,4 +90,50 @@ export function buildRankIndex(payload: RoutingPayload | null): Map<string, Rout
 /** Total number of logins across providers, for the header meta line. */
 export function countAccounts(payload: RoutingPayload | null): number {
   return payload?.providers.reduce((sum, provider) => sum + provider.accounts.length, 0) ?? 0;
+}
+
+export const ROUTING_MODES: readonly RoutingMode[] = ['even', 'reset', 'manual'];
+
+/**
+ * The order shown and edited in manual mode: the saved `order` filtered to
+ * logins that still exist, then every other login in its current display order.
+ * Returns the accounts themselves so the caller can render rows directly.
+ */
+export function buildEditableOrder(
+  accounts: readonly RoutingAccount[],
+  savedOrder: readonly string[]
+): RoutingAccount[] {
+  const byName = new Map(accounts.map((account) => [account.name, account]));
+  const placed = new Set<string>();
+  const result: RoutingAccount[] = [];
+  savedOrder.forEach((name) => {
+    const account = byName.get(name);
+    if (!account || placed.has(name)) return;
+    placed.add(name);
+    result.push(account);
+  });
+  accounts.forEach((account) => {
+    if (placed.has(account.name)) return;
+    placed.add(account.name);
+    result.push(account);
+  });
+  return result;
+}
+
+/**
+ * Move one name a step up (-1) or down (+1) in an order list; out-of-range
+ * moves and unknown names return the list unchanged (same reference).
+ */
+export function moveInOrder(
+  order: readonly string[],
+  name: string,
+  direction: -1 | 1
+): readonly string[] {
+  const from = order.indexOf(name);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= order.length) return order;
+  const next = [...order];
+  next.splice(from, 1);
+  next.splice(to, 0, name);
+  return next;
 }
